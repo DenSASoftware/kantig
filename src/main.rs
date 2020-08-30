@@ -77,8 +77,8 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
 
 fn create_low_poly(
     original: &RgbImage,
-    points: &Vec<TriangulationPoint<f32>>,
-    triangulation: &Vec<Triangle>,
+    points: &[TriangulationPoint<f32>],
+    triangulation: &[Triangle],
     opts: &Options,
 ) -> RgbImage {
     let mut img = RgbImage::new(original.width(), original.height());
