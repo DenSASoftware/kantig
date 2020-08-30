@@ -28,7 +28,14 @@ struct Options {
 }
 
 fn main() {
-    let orig = image::open(std::env::args().nth(1).unwrap()).unwrap();
+    let opts = Options::from_args();
+
+    let mut buffer = Vec::new();
+    match opts.input {
+        Some(filename) => std::fs::File::open(filename).unwrap().read_to_end(&mut buffer).unwrap(),
+        None => std::io::stdin().read_to_end(&mut buffer).unwrap(),
+    };
+    let orig = image::io::Reader::new(std::io::Cursor::new(buffer)).with_guessed_format().unwrap().decode().unwrap();
 
     let c = canny(&orig.to_luma(), 10.0, 100.0);
     let orig = orig.to_rgb();
