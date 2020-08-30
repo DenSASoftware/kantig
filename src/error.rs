@@ -10,3 +10,5 @@ pub enum LowPolyError {
     IOError(#[from] IOError),
 }
 
+pub type LowPolyResult<T> = Result<T, LowPolyError>;
+

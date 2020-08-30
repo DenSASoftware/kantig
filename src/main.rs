@@ -1,7 +1,7 @@
 use image::Pixel;
 use image::io::Reader as ImageReader;
-use image::RgbImage;
-use std::io::Read;
+use image::{RgbImage, DynamicImage};
+use std::io::{Read, stdin, Cursor, BufReader};
 use imageproc::edges::canny;
 use imageproc::drawing::{
     draw_convex_polygon_mut,
@@ -10,31 +10,37 @@ use imageproc::drawing::{
 };
 use imageproc::pixelops::interpolate;
 use rand::{seq::SliceRandom, rngs::SmallRng, SeedableRng};
-use rtriangulate::{TriangulationPoint, triangulate};
+use rtriangulate::{TriangulationPoint, triangulate, Triangle};
 use structopt::StructOpt;
+use std::fs::File;
 
 use opts::Options;
-use error::LowPolyError;
+use error::LowPolyResult;
 
 mod opts;
 mod error;
 
-fn main() {
-    let opts = Options::from_args();
+fn load_image(opts: &Options) -> LowPolyResult<DynamicImage> {
+    match &opts.input {
+        Some(filename) => {
+            Ok(ImageReader::new(BufReader::new(File::open(filename)?)).with_guessed_format()?.decode()?)
+        },
+        None => {
+            let mut buffer = Vec::new();
+            stdin().read_to_end(&mut buffer)?;
 
-    let mut buffer = Vec::new();
-    match opts.input {
-        Some(filename) => std::fs::File::open(filename).unwrap().read_to_end(&mut buffer).unwrap(),
-        None => std::io::stdin().read_to_end(&mut buffer).unwrap(),
-    };
-    let orig = ImageReader::new(std::io::Cursor::new(buffer)).with_guessed_format().unwrap().decode().unwrap();
+            Ok(ImageReader::new(Cursor::new(buffer)).with_guessed_format()?.decode()?)
+        }
+    }
+}
 
-    let c = canny(&orig.to_luma(), opts.canny_lower, opts.canny_upper);
-    let orig = orig.to_rgb();
+fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<TriangulationPoint<f32>>> {
+    let edges = canny(&img.to_luma(), opts.canny_lower, opts.canny_upper);
 
     let mut points = Vec::new();
-    for (x, y, p) in c.enumerate_pixels() {
-        if p.0 == [255u8; 1] {
+    const WHITE: [u8; 1] = [255u8; 1];
+    for (x, y, p) in edges.enumerate_pixels() {
+        if p.0 == WHITE {
             points.push(TriangulationPoint::new(x as f32, y as f32));
         }
     }
@@ -59,18 +65,25 @@ fn main() {
         i += 1;
     }
 
-    let width = c.width() as f32;
-    let height = c.height() as f32;
+    let width = edges.width() as f32;
+    let height = edges.height() as f32;
     points.push(TriangulationPoint::new(0., 0.));
     points.push(TriangulationPoint::new(width, 0.));
     points.push(TriangulationPoint::new(0., height));
     points.push(TriangulationPoint::new(width, height));
 
-    let triangles = triangulate(&points).unwrap();
+    Ok(points)
+}
 
-    let mut img = RgbImage::new(c.width(), c.height());
+fn create_low_poly(
+    original: &RgbImage,
+    points: &Vec<TriangulationPoint<f32>>,
+    triangulation: &Vec<Triangle>,
+    opts: &Options,
+) -> RgbImage {
+    let mut img = RgbImage::new(original.width(), original.height());
     let mut tri_buf = [Point::new(0, 0); 3];
-    for tri in triangles {
+    for tri in triangulation {
         let a = points[tri.0];
         let b = points[tri.1];
         let c = points[tri.2];
@@ -79,7 +92,7 @@ fn main() {
             (a.x + b.x + c.x) as u32 / 3,
             (a.y + b.y + c.y) as u32 / 3,
         );
-        let color = orig.get_pixel(center.0, center.1).to_rgb();
+        let color = original.get_pixel(center.0, center.1).to_rgb();
         tri_buf[0] = Point::new(a.x as i32, a.y as i32);
         tri_buf[1] = Point::new(b.x as i32, b.y as i32);
         tri_buf[2] = Point::new(c.x as i32, c.y as i32);
@@ -108,5 +121,18 @@ fn main() {
         }
     }
 
+    img
+}
+
+fn main() {
+    let opts = Options::from_args();
+
+    let image = load_image(&opts).unwrap();
+    let points = edge_points(&image, &opts).unwrap();
+    let image = image.to_rgb();
+
+    let triangles = triangulate(&points).unwrap();
+
+    let img = create_low_poly(&image, &points, &triangles, &opts);
     img.save_with_format("/dev/stdout", image::ImageFormat::Png).unwrap();
 }
