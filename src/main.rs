@@ -1,7 +1,31 @@
 use image::Pixel;
+use std::io::Read;
 use imageproc::edges::canny;
 use rand::{thread_rng, seq::SliceRandom};
 use rtriangulate::{TriangulationPoint, triangulate};
+use structopt::StructOpt;
+use std::path::PathBuf;
+
+#[derive(Debug, StructOpt)]
+struct Options {
+    #[structopt(long, default_value = "10.0")]
+    canny_lower: f32,
+
+    #[structopt(long, default_value = "100.0")]
+    canny_upper: f32,
+
+    #[structopt(short, long, default_value = "1000")]
+    points: u32,
+
+    #[structopt(long, default_value = "2.5")]
+    points_min_distance: f32,
+
+    #[structopt(long, short, parse(from_os_str))]
+    output: Option<PathBuf>,
+
+    #[structopt(parse(from_os_str))]
+    input: Option<PathBuf>,
+}
 
 fn main() {
     let orig = image::open(std::env::args().nth(1).unwrap()).unwrap();
