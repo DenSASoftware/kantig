@@ -11,7 +11,7 @@ use std::io::{stdin, stdout, BufReader, Cursor, Read};
 use structopt::StructOpt;
 
 use error::LowPolyResult;
-use opts::Options;
+use opts::{Options, PixelUnit};
 
 mod error;
 mod opts;
@@ -47,7 +47,13 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
         None => SmallRng::from_entropy(),
     };
     points.shuffle(&mut rng);
-    points.truncate(opts.points);
+
+    let limit = match opts.edge_number()? {
+        PixelUnit::Absolute(abs) => abs,
+        PixelUnit::Relative(rel) => (points.len() as f32 * rel) as usize,
+        PixelUnit::PixelRelative(rel) => ((edges.width() * edges.height()) as f32 * rel) as usize,
+    };
+    points.truncate(limit);
 
     remove_close_points(&mut points, opts.points_min_distance);
 

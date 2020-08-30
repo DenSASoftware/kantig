@@ -4,12 +4,14 @@ use std::num::ParseFloatError;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
+use crate::error::{LowPolyResult, LowPolyError};
 
 #[derive(Debug)]
 enum FloatParsingError {
     Native(ParseFloatError),
     NonNormal,
     Negative,
+    BiggerThanOne
 }
 
 impl Display for FloatParsingError {
@@ -18,6 +20,7 @@ impl Display for FloatParsingError {
             FloatParsingError::Native(err) => err.fmt(fmt),
             FloatParsingError::NonNormal => write!(fmt, "number is inf or NaN"),
             FloatParsingError::Negative => write!(fmt, "number is negative"),
+            FloatParsingError::BiggerThanOne => write!(fmt, "number is bigger than one"),
         }
     }
 }
@@ -31,6 +34,14 @@ fn parse_positive_float(src: &str) -> Result<f32, FloatParsingError> {
     match num {
         _ if num.is_infinite() || num.is_nan() => Err(FloatParsingError::NonNormal),
         _ if num < 0. => Err(FloatParsingError::Negative),
+        _ => Ok(num),
+    }
+}
+
+fn parse_float_between_one_zero(src: &str) -> Result<f32, FloatParsingError> {
+    let num = parse_positive_float(src)?;
+    match num {
+        _ if num > 1. => Err(FloatParsingError::BiggerThanOne),
         _ => Ok(num),
     }
 }
@@ -62,8 +73,14 @@ pub struct Options {
     #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "15.0")]
     pub canny_upper: f32,
 
-    #[structopt(short, long, default_value = "10000")]
-    pub points: usize,
+    #[structopt(short, long)]
+    pub points: Option<usize>,
+
+    #[structopt(long, parse(try_from_str = parse_float_between_one_zero))]
+    pub points_relative: Option<f32>,
+
+    #[structopt(long, parse(try_from_str = parse_float_between_one_zero))]
+    pub points_pixel_relative: Option<f32>,
 
     #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "4")]
     pub points_min_distance: f32,
@@ -83,3 +100,22 @@ pub struct Options {
     #[structopt(parse(from_os_str))]
     pub input: Option<PathBuf>,
 }
+
+pub enum PixelUnit {
+    Absolute(usize),
+    Relative(f32),
+    PixelRelative(f32),
+}
+
+impl Options {
+    pub fn edge_number(&self) -> LowPolyResult<PixelUnit> {
+        match (self.points, self.points_relative, self.points_pixel_relative) {
+            (None, None, None) => Ok(PixelUnit::Absolute(10000)),
+            (Some(abs), None, None) => Ok(PixelUnit::Absolute(abs)),
+            (None, Some(rel), None) => Ok(PixelUnit::Relative(rel)),
+            (None, None, Some(rel)) => Ok(PixelUnit::PixelRelative(rel)),
+            _ => Err(LowPolyError::CLIError),
+        }
+    }
+}
+
