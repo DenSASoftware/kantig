@@ -16,6 +16,10 @@ use opts::{Options, PixelUnit};
 mod error;
 mod opts;
 
+fn distance(p1: &TriangulationPoint<f32>, p2: &TriangulationPoint<f32>) -> f32 {
+    ((p1.x - p2.x).powi(2) + (p1.y - p2.y).powi(2)).sqrt()
+}
+
 fn load_image(opts: &Options) -> LowPolyResult<DynamicImage> {
     match &opts.input {
         Some(filename) => Ok(ImageReader::new(BufReader::new(File::open(filename)?))
@@ -67,13 +71,12 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
     Ok(points)
 }
 
-fn remove_close_points(points: &mut Vec<TriangulationPoint<f32>>, distance: f32) {
+fn remove_close_points(points: &mut Vec<TriangulationPoint<f32>>, min_distance: f32) {
     let mut i = 0;
     while i < points.len() {
         let mut j = i + 1;
         while j < points.len() {
-            if ((points[i].x - points[j].x).powi(2) + (points[i].y - points[j].y).powi(2)).sqrt()
-                < distance
+            if distance(&points[i], &points[j]) < min_distance
             {
                 points.remove(j);
             } else {
