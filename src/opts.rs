@@ -1,7 +1,9 @@
+use image::ImageFormat;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::num::ParseFloatError;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(Debug)]
 enum FloatParsingError {
@@ -33,6 +35,25 @@ fn parse_positive_float(src: &str) -> Result<f32, FloatParsingError> {
     }
 }
 
+#[derive(Debug, Error)]
+enum ImageFormatError {
+    #[error("unsupported image format {0}")]
+    Unsupported(String),
+}
+
+fn parse_image_format(src: &str) -> Result<ImageFormat, ImageFormatError> {
+    use ImageFormat::*;
+    let formats = [
+        Png, Jpeg, Gif, WebP, Pnm, Tiff, Tga, Dds, Bmp, Ico, Hdr, Farbfeld,
+    ];
+
+    formats
+        .iter()
+        .find(|format| format.extensions_str().into_iter().any(|ext| *ext == src))
+        .cloned()
+        .ok_or_else(|| ImageFormatError::Unsupported(src.into()))
+}
+
 #[derive(Debug, StructOpt)]
 pub struct Options {
     #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "10.0")]
@@ -55,6 +76,9 @@ pub struct Options {
 
     #[structopt(long, short, parse(from_os_str))]
     pub output: Option<PathBuf>,
+
+    #[structopt(long, parse(try_from_str = parse_image_format))]
+    pub output_format: Option<ImageFormat>,
 
     #[structopt(parse(from_os_str))]
     pub input: Option<PathBuf>,

@@ -1,13 +1,13 @@
 use image::io::Reader as ImageReader;
 use image::Pixel;
-use image::{DynamicImage, RgbImage};
+use image::{DynamicImage, ImageFormat, RgbImage};
 use imageproc::drawing::{draw_antialiased_line_segment_mut, draw_convex_polygon_mut, Point};
 use imageproc::edges::canny;
 use imageproc::pixelops::interpolate;
 use rand::{rngs::SmallRng, seq::SliceRandom, SeedableRng};
 use rtriangulate::{triangulate, Triangle, TriangulationPoint};
 use std::fs::File;
-use std::io::{stdin, BufReader, Cursor, Read};
+use std::io::{stdin, stdout, BufReader, Cursor, Read};
 use structopt::StructOpt;
 
 use error::LowPolyResult;
@@ -49,21 +49,7 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
     points.shuffle(&mut rng);
     points.truncate(opts.points);
 
-    let mut i = 0;
-    while i < points.len() {
-        let mut j = i + 1;
-        while j < points.len() {
-            if ((points[i].x - points[j].x).powi(2) + (points[i].y - points[j].y).powi(2)).sqrt()
-                < opts.points_min_distance
-            {
-                points.remove(j);
-            } else {
-                j += 1;
-            }
-        }
-
-        i += 1;
-    }
+    remove_close_points(&mut points, opts.points_min_distance);
 
     let width = edges.width() as f32;
     let height = edges.height() as f32;
@@ -73,6 +59,24 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
     points.push(TriangulationPoint::new(width, height));
 
     Ok(points)
+}
+
+fn remove_close_points(points: &mut Vec<TriangulationPoint<f32>>, distance: f32) {
+    let mut i = 0;
+    while i < points.len() {
+        let mut j = i + 1;
+        while j < points.len() {
+            if ((points[i].x - points[j].x).powi(2) + (points[i].y - points[j].y).powi(2)).sqrt()
+                < distance
+            {
+                points.remove(j);
+            } else {
+                j += 1;
+            }
+        }
+
+        i += 1;
+    }
 }
 
 fn create_low_poly(
@@ -127,6 +131,19 @@ fn main() {
     let triangles = triangulate(&points).unwrap();
 
     let img = create_low_poly(&image, &points, &triangles, &opts);
-    img.save_with_format("/dev/stdout", image::ImageFormat::Png)
-        .unwrap();
+
+    let output_format = opts
+        .output_format
+        .or_else(|| {
+            opts.output
+                .as_ref()
+                .and_then(|out| ImageFormat::from_path(out).ok())
+        })
+        .unwrap_or(ImageFormat::Png);
+
+    match &opts.output {
+        Some(out) => img.save_with_format(out, output_format),
+        None => DynamicImage::ImageRgb8(img).write_to(&mut stdout().lock(), output_format),
+    }
+    .unwrap();
 }
