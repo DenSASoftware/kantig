@@ -1,17 +1,17 @@
+use crate::error::{LowPolyError, LowPolyResult};
 use image::ImageFormat;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::num::ParseFloatError;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
-use crate::error::{LowPolyResult, LowPolyError};
 
 #[derive(Debug)]
 enum FloatParsingError {
     Native(ParseFloatError),
     NonNormal,
     Negative,
-    BiggerThanOne
+    BiggerThanOne,
 }
 
 impl Display for FloatParsingError {
@@ -109,7 +109,11 @@ pub enum PixelUnit {
 
 impl Options {
     pub fn edge_number(&self) -> LowPolyResult<PixelUnit> {
-        match (self.points, self.points_relative, self.points_pixel_relative) {
+        match (
+            self.points,
+            self.points_relative,
+            self.points_pixel_relative,
+        ) {
             (None, None, None) => Ok(PixelUnit::Absolute(10000)),
             (Some(abs), None, None) => Ok(PixelUnit::Absolute(abs)),
             (None, Some(rel), None) => Ok(PixelUnit::Relative(rel)),
@@ -118,4 +122,3 @@ impl Options {
         }
     }
 }
-
