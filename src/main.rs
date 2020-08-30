@@ -12,34 +12,10 @@ use imageproc::pixelops::interpolate;
 use rand::{seq::SliceRandom, rngs::SmallRng, SeedableRng};
 use rtriangulate::{TriangulationPoint, triangulate};
 use structopt::StructOpt;
-use std::path::PathBuf;
 
-#[derive(Debug, StructOpt)]
-struct Options {
-    #[structopt(long, default_value = "10.0")]
-    canny_lower: f32,
+use opts::Options;
 
-    #[structopt(long, default_value = "100.0")]
-    canny_upper: f32,
-
-    #[structopt(short, long, default_value = "1000")]
-    points: usize,
-
-    #[structopt(long, default_value = "2.5")]
-    points_min_distance: f32,
-
-    #[structopt(long)]
-    no_antialiasing: bool,
-
-    #[structopt(long)]
-    rng_seed: Option<u128>,
-
-    #[structopt(long, short, parse(from_os_str))]
-    output: Option<PathBuf>,
-
-    #[structopt(parse(from_os_str))]
-    input: Option<PathBuf>,
-}
+mod opts;
 
 fn main() {
     let opts = Options::from_args();
