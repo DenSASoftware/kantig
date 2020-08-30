@@ -38,13 +38,13 @@ pub struct Options {
     #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "10.0")]
     pub canny_lower: f32,
 
-    #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "100.0")]
+    #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "15.0")]
     pub canny_upper: f32,
 
-    #[structopt(short, long, default_value = "1000")]
+    #[structopt(short, long, default_value = "10000")]
     pub points: usize,
 
-    #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "2.5")]
+    #[structopt(long, parse(try_from_str = parse_positive_float), default_value = "4")]
     pub points_min_distance: f32,
 
     #[structopt(long)]
