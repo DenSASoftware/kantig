@@ -1,0 +1,14 @@
+[package]
+name = "low-poly"
+version = "0.1.0"
+authors = ["DenSASoftware <social@densa.software>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+imageproc = "0.21.0"
+image = "0.23.8"
+rtriangulate = "0.3.1"
+rand = "0.7.3"
+structopt = "0.3.17"
