@@ -15,7 +15,7 @@ struct Options {
     canny_upper: f32,
 
     #[structopt(short, long, default_value = "1000")]
-    points: u32,
+    points: usize,
 
     #[structopt(long, default_value = "2.5")]
     points_min_distance: f32,
@@ -37,7 +37,7 @@ fn main() {
     };
     let orig = image::io::Reader::new(std::io::Cursor::new(buffer)).with_guessed_format().unwrap().decode().unwrap();
 
-    let c = canny(&orig.to_luma(), 10.0, 100.0);
+    let c = canny(&orig.to_luma(), opts.canny_lower, opts.canny_upper);
     let orig = orig.to_rgb();
 
     let mut points = Vec::new();
@@ -47,13 +47,13 @@ fn main() {
         }
     }
     points.shuffle(&mut thread_rng());
-    points.truncate(1000);
+    points.truncate(opts.points);
 
     let mut i = 0;
     while i < points.len() {
         let mut j = i + 1;
         while j < points.len() {
-            if ((points[i].x - points[j].x).powi(2) + (points[i].y - points[j].y).powi(2)).sqrt() < 2.5 {
+            if ((points[i].x - points[j].x).powi(2) + (points[i].y - points[j].y).powi(2)).sqrt() < opts.points_min_distance {
                 points.remove(j);
             } else {
                 j += 1;
