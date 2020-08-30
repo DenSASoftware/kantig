@@ -121,17 +121,7 @@ fn create_low_poly(
     img
 }
 
-fn main() {
-    let opts = Options::from_args();
-
-    let image = load_image(&opts).unwrap();
-    let points = edge_points(&image, &opts).unwrap();
-    let image = image.to_rgb();
-
-    let triangles = triangulate(&points).unwrap();
-
-    let img = create_low_poly(&image, &points, &triangles, &opts);
-
+fn save_image(img: RgbImage, opts: &Options) -> LowPolyResult<()> {
     let output_format = opts
         .output_format
         .or_else(|| {
@@ -144,6 +134,20 @@ fn main() {
     match &opts.output {
         Some(out) => img.save_with_format(out, output_format),
         None => DynamicImage::ImageRgb8(img).write_to(&mut stdout().lock(), output_format),
-    }
-    .unwrap();
+    }?;
+
+    Ok(())
+}
+
+fn main() {
+    let opts = Options::from_args();
+
+    let image = load_image(&opts).unwrap();
+    let points = edge_points(&image, &opts).unwrap();
+    let image = image.to_rgb();
+
+    let triangles = triangulate(&points).unwrap();
+
+    let img = create_low_poly(&image, &points, &triangles, &opts);
+    save_image(img, &opts).unwrap();
 }
