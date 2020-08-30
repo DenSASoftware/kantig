@@ -14,8 +14,10 @@ use rtriangulate::{TriangulationPoint, triangulate};
 use structopt::StructOpt;
 
 use opts::Options;
+use error::LowPolyError;
 
 mod opts;
+mod error;
 
 fn main() {
     let opts = Options::from_args();

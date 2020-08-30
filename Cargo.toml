@@ -11,6 +11,7 @@ imageproc = "0.21.0"
 image = "0.23.8"
 rtriangulate = "0.3.1"
 structopt = "0.3.17"
+thiserror = "1.0.20"
 
 [dependencies.rand]
 version = "0.7.3"
