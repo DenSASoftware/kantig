@@ -1,7 +1,7 @@
 use image::Pixel;
 use std::io::Read;
 use imageproc::edges::canny;
-use rand::{thread_rng, seq::SliceRandom};
+use rand::{seq::SliceRandom, rngs::SmallRng, SeedableRng};
 use rtriangulate::{TriangulationPoint, triangulate};
 use structopt::StructOpt;
 use std::path::PathBuf;
@@ -19,6 +19,12 @@ struct Options {
 
     #[structopt(long, default_value = "2.5")]
     points_min_distance: f32,
+
+    #[structopt(long)]
+    no_antialiasing: bool,
+
+    #[structopt(long)]
+    rng_seed: Option<u128>,
 
     #[structopt(long, short, parse(from_os_str))]
     output: Option<PathBuf>,
@@ -46,7 +52,11 @@ fn main() {
             points.push(TriangulationPoint::new(x as f32, y as f32));
         }
     }
-    points.shuffle(&mut thread_rng());
+    let mut rng = match opts.rng_seed {
+        Some(seed) => SmallRng::from_seed(seed.to_le_bytes()),
+        None => SmallRng::from_entropy(),
+    };
+    points.shuffle(&mut rng);
     points.truncate(opts.points);
 
     let mut i = 0;
@@ -94,27 +104,29 @@ fn main() {
             color
         );
 
-        imageproc::drawing::draw_antialiased_line_segment_mut(
-            &mut img,
-            (a.x as i32, a.y as i32),
-            (b.x as i32, b.y as i32),
-            color,
-            imageproc::pixelops::interpolate,
-        );
-        imageproc::drawing::draw_antialiased_line_segment_mut(
-            &mut img,
-            (a.x as i32, a.y as i32),
-            (c.x as i32, c.y as i32),
-            color,
-            imageproc::pixelops::interpolate,
-        );
-        imageproc::drawing::draw_antialiased_line_segment_mut(
-            &mut img,
-            (c.x as i32, c.y as i32),
-            (b.x as i32, b.y as i32),
-            color,
-            imageproc::pixelops::interpolate,
-        );
+        if !opts.no_antialiasing {
+            imageproc::drawing::draw_antialiased_line_segment_mut(
+                &mut img,
+                (a.x as i32, a.y as i32),
+                (b.x as i32, b.y as i32),
+                color,
+                imageproc::pixelops::interpolate,
+            );
+            imageproc::drawing::draw_antialiased_line_segment_mut(
+                &mut img,
+                (a.x as i32, a.y as i32),
+                (c.x as i32, c.y as i32),
+                color,
+                imageproc::pixelops::interpolate,
+            );
+            imageproc::drawing::draw_antialiased_line_segment_mut(
+                &mut img,
+                (c.x as i32, c.y as i32),
+                (b.x as i32, b.y as i32),
+                color,
+                imageproc::pixelops::interpolate,
+            );
+        }
     }
 
     img.save_with_format("/dev/stdout", image::ImageFormat::Png).unwrap();

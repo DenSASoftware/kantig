@@ -10,5 +10,9 @@ edition = "2018"
 imageproc = "0.21.0"
 image = "0.23.8"
 rtriangulate = "0.3.1"
-rand = "0.7.3"
 structopt = "0.3.17"
+
+[dependencies.rand]
+version = "0.7.3"
+features = ["small_rng"]
+
