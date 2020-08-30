@@ -86,6 +86,9 @@ pub struct Options {
     pub points_min_distance: f32,
 
     #[structopt(long)]
+    pub color_mapper: Option<String>,
+
+    #[structopt(long)]
     pub no_antialiasing: bool,
 
     #[structopt(long)]

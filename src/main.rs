@@ -7,7 +7,8 @@ use imageproc::pixelops::interpolate;
 use rand::{rngs::SmallRng, seq::SliceRandom, SeedableRng};
 use rtriangulate::{triangulate, Triangle, TriangulationPoint};
 use std::fs::File;
-use std::io::{stdin, stdout, BufReader, Cursor, Read};
+use std::io::{stdin, stdout, BufReader, Cursor, Read, Write};
+use std::process::{Command, Stdio};
 use structopt::StructOpt;
 
 use error::LowPolyResult;
@@ -94,7 +95,7 @@ fn create_low_poly(
     points: &[TriangulationPoint<f32>],
     triangulation: &[Triangle],
     opts: &Options,
-) -> RgbImage {
+) -> LowPolyResult<RgbImage> {
     let mut img = RgbImage::new(original.width(), original.height());
     let mut tri_buf = [Point::new(0, 0); 3];
     for tri in triangulation {
@@ -103,10 +104,14 @@ fn create_low_poly(
         let c = points[tri.2];
 
         let center = ((a.x + b.x + c.x) as u32 / 3, (a.y + b.y + c.y) as u32 / 3);
-        let color = original.get_pixel(center.0, center.1).to_rgb();
         tri_buf[0] = Point::new(a.x as i32, a.y as i32);
         tri_buf[1] = Point::new(b.x as i32, b.y as i32);
         tri_buf[2] = Point::new(c.x as i32, c.y as i32);
+
+        let mut color = original.get_pixel(center.0, center.1).to_rgb();
+        if let Some(cmd) = &opts.color_mapper {
+            color = get_color_from_command(&cmd, color, &[a, b, c], (img.width(), img.height()))?;
+        }
 
         draw_convex_polygon_mut(&mut img, &tri_buf, color);
 
@@ -128,7 +133,63 @@ fn create_low_poly(
         }
     }
 
-    img
+    Ok(img)
+}
+
+fn get_color_from_command(
+    cmd: &str,
+    default_color: image::Rgb<u8>,
+    triangle_coords: &[TriangulationPoint<f32>; 3],
+    img_size: (u32, u32),
+) -> LowPolyResult<image::Rgb<u8>> {
+    let mut proc = if cfg!(target_os = "windows") {
+        let mut tmp = Command::new("cmd");
+        tmp.args(&["/C", cmd]);
+
+        tmp
+    } else {
+        let mut tmp = Command::new("sh");
+        tmp.args(&["-c", cmd]);
+
+        tmp
+    };
+
+    proc.stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut proc = proc.spawn().expect("could not spawn child process");
+    let stdin = proc.stdin.as_mut().expect("could not open process stdin");
+    let text = format!(
+        "{} {} {}\n{} {} {} {} {} {}\n{} {}",
+        default_color.0[0],
+        default_color.0[1],
+        default_color.0[2],
+        triangle_coords[0].x,
+        triangle_coords[0].y,
+        triangle_coords[1].x,
+        triangle_coords[1].y,
+        triangle_coords[2].x,
+        triangle_coords[2].y,
+        img_size.0,
+        img_size.1
+    );
+    stdin.write_all(text.as_bytes())?;
+    stdin.flush()?;
+
+    let output = proc.wait_with_output()?;
+    let output = String::from_utf8_lossy(&output.stdout);
+    let line = output.lines().next().unwrap();
+
+    let nums = line
+        .trim()
+        .split_whitespace()
+        .map(|s| s.parse::<u8>())
+        .collect::<Result<Vec<u8>, _>>()
+        .unwrap();
+    match *nums.as_slice() {
+        [r, g, b] => Ok([r, g, b].into()),
+        _ => unimplemented!(),
+    }
 }
 
 fn save_image(img: RgbImage, opts: &Options) -> LowPolyResult<()> {
@@ -158,6 +219,6 @@ fn main() {
 
     let triangles = triangulate(&points).unwrap();
 
-    let img = create_low_poly(&image, &points, &triangles, &opts);
+    let img = create_low_poly(&image, &points, &triangles, &opts).unwrap();
     save_image(img, &opts).unwrap();
 }
