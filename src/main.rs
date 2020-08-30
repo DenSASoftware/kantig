@@ -1,35 +1,33 @@
-use image::Pixel;
 use image::io::Reader as ImageReader;
-use image::{RgbImage, DynamicImage};
-use std::io::{Read, stdin, Cursor, BufReader};
+use image::Pixel;
+use image::{DynamicImage, RgbImage};
+use imageproc::drawing::{draw_antialiased_line_segment_mut, draw_convex_polygon_mut, Point};
 use imageproc::edges::canny;
-use imageproc::drawing::{
-    draw_convex_polygon_mut,
-    draw_antialiased_line_segment_mut,
-    Point,
-};
 use imageproc::pixelops::interpolate;
-use rand::{seq::SliceRandom, rngs::SmallRng, SeedableRng};
-use rtriangulate::{TriangulationPoint, triangulate, Triangle};
-use structopt::StructOpt;
+use rand::{rngs::SmallRng, seq::SliceRandom, SeedableRng};
+use rtriangulate::{triangulate, Triangle, TriangulationPoint};
 use std::fs::File;
+use std::io::{stdin, BufReader, Cursor, Read};
+use structopt::StructOpt;
 
-use opts::Options;
 use error::LowPolyResult;
+use opts::Options;
 
-mod opts;
 mod error;
+mod opts;
 
 fn load_image(opts: &Options) -> LowPolyResult<DynamicImage> {
     match &opts.input {
-        Some(filename) => {
-            Ok(ImageReader::new(BufReader::new(File::open(filename)?)).with_guessed_format()?.decode()?)
-        },
+        Some(filename) => Ok(ImageReader::new(BufReader::new(File::open(filename)?))
+            .with_guessed_format()?
+            .decode()?),
         None => {
             let mut buffer = Vec::new();
             stdin().read_to_end(&mut buffer)?;
 
-            Ok(ImageReader::new(Cursor::new(buffer)).with_guessed_format()?.decode()?)
+            Ok(ImageReader::new(Cursor::new(buffer))
+                .with_guessed_format()?
+                .decode()?)
         }
     }
 }
@@ -55,7 +53,9 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
     while i < points.len() {
         let mut j = i + 1;
         while j < points.len() {
-            if ((points[i].x - points[j].x).powi(2) + (points[i].y - points[j].y).powi(2)).sqrt() < opts.points_min_distance {
+            if ((points[i].x - points[j].x).powi(2) + (points[i].y - points[j].y).powi(2)).sqrt()
+                < opts.points_min_distance
+            {
                 points.remove(j);
             } else {
                 j += 1;
@@ -88,20 +88,13 @@ fn create_low_poly(
         let b = points[tri.1];
         let c = points[tri.2];
 
-        let center = (
-            (a.x + b.x + c.x) as u32 / 3,
-            (a.y + b.y + c.y) as u32 / 3,
-        );
+        let center = ((a.x + b.x + c.x) as u32 / 3, (a.y + b.y + c.y) as u32 / 3);
         let color = original.get_pixel(center.0, center.1).to_rgb();
         tri_buf[0] = Point::new(a.x as i32, a.y as i32);
         tri_buf[1] = Point::new(b.x as i32, b.y as i32);
         tri_buf[2] = Point::new(c.x as i32, c.y as i32);
 
-        draw_convex_polygon_mut(
-            &mut img,
-            &tri_buf,
-            color
-        );
+        draw_convex_polygon_mut(&mut img, &tri_buf, color);
 
         if !opts.no_antialiasing {
             let ps = [a, b, c];
@@ -134,5 +127,6 @@ fn main() {
     let triangles = triangulate(&points).unwrap();
 
     let img = create_low_poly(&image, &points, &triangles, &opts);
-    img.save_with_format("/dev/stdout", image::ImageFormat::Png).unwrap();
+    img.save_with_format("/dev/stdout", image::ImageFormat::Png)
+        .unwrap();
 }

@@ -1,7 +1,7 @@
-use structopt::StructOpt;
-use std::path::PathBuf;
-use std::num::ParseFloatError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::num::ParseFloatError;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug)]
 enum FloatParsingError {
@@ -59,4 +59,3 @@ pub struct Options {
     #[structopt(parse(from_os_str))]
     pub input: Option<PathBuf>,
 }
-

@@ -1,6 +1,6 @@
-use thiserror::Error;
 use image::error::ImageError;
 use std::io::Error as IOError;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum LowPolyError {
@@ -11,4 +11,3 @@ pub enum LowPolyError {
 }
 
 pub type LowPolyResult<T> = Result<T, LowPolyError>;
-
