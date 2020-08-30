@@ -59,7 +59,9 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
     };
     points.truncate(limit);
 
-    remove_close_points(&mut points, opts.points_min_distance);
+    if opts.points_min_distance > 0. {
+        remove_close_points(&mut points, opts.points_min_distance);
+    }
 
     let width = edges.width() as f32;
     let height = edges.height() as f32;
@@ -76,8 +78,7 @@ fn remove_close_points(points: &mut Vec<TriangulationPoint<f32>>, min_distance: 
     while i < points.len() {
         let mut j = i + 1;
         while j < points.len() {
-            if distance(&points[i], &points[j]) < min_distance
-            {
+            if distance(&points[i], &points[j]) < min_distance {
                 points.remove(j);
             } else {
                 j += 1;
