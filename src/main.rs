@@ -8,9 +8,10 @@ use rand::{rngs::SmallRng, seq::SliceRandom, SeedableRng};
 use rtriangulate::{triangulate, Triangle, TriangulationPoint};
 use std::fs::File;
 use std::io::{stdin, stdout, BufReader, Cursor, Read, Write};
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, exit};
 use structopt::StructOpt;
 
+use std::error::Error;
 use error::LowPolyResult;
 use opts::{Options, PixelUnit};
 
@@ -210,15 +211,25 @@ fn save_image(img: RgbImage, opts: &Options) -> LowPolyResult<()> {
     Ok(())
 }
 
+fn simple_unwrap<T, E: Error>(res: Result<T, E>, action: &str) -> T {
+    match res {
+        Ok(val) => val,
+        Err(err) => {
+            eprintln!("during {} an error occured: {}", action, err);
+            exit(1);
+        }
+    }
+}
+
 fn main() {
     let opts = Options::from_args();
 
-    let image = load_image(&opts).unwrap();
-    let points = edge_points(&image, &opts).unwrap();
+    let image = simple_unwrap(load_image(&opts), "loading the image");
+    let points = simple_unwrap(edge_points(&image, &opts), "calculating the edges");
     let image = image.to_rgb();
 
     let triangles = triangulate(&points).unwrap();
 
-    let img = create_low_poly(&image, &points, &triangles, &opts).unwrap();
-    save_image(img, &opts).unwrap();
+    let img = simple_unwrap(create_low_poly(&image, &points, &triangles, &opts), "creating the low-poly image");
+    simple_unwrap(save_image(img, &opts), "saving the image");
 }
