@@ -28,7 +28,7 @@ fn load_image(opts: &Options) -> LowPolyResult<DynamicImage> {
             .decode()?),
         None => {
             let mut buffer = Vec::new();
-            stdin().read_to_end(&mut buffer)?;
+            stdin().lock().read_to_end(&mut buffer)?;
 
             Ok(ImageReader::new(Cursor::new(buffer))
                 .with_guessed_format()?
