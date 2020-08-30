@@ -1,6 +1,14 @@
 use image::Pixel;
+use image::io::Reader as ImageReader;
+use image::RgbImage;
 use std::io::Read;
 use imageproc::edges::canny;
+use imageproc::drawing::{
+    draw_convex_polygon_mut,
+    draw_antialiased_line_segment_mut,
+    Point,
+};
+use imageproc::pixelops::interpolate;
 use rand::{seq::SliceRandom, rngs::SmallRng, SeedableRng};
 use rtriangulate::{TriangulationPoint, triangulate};
 use structopt::StructOpt;
@@ -41,7 +49,7 @@ fn main() {
         Some(filename) => std::fs::File::open(filename).unwrap().read_to_end(&mut buffer).unwrap(),
         None => std::io::stdin().read_to_end(&mut buffer).unwrap(),
     };
-    let orig = image::io::Reader::new(std::io::Cursor::new(buffer)).with_guessed_format().unwrap().decode().unwrap();
+    let orig = ImageReader::new(std::io::Cursor::new(buffer)).with_guessed_format().unwrap().decode().unwrap();
 
     let c = canny(&orig.to_luma(), opts.canny_lower, opts.canny_upper);
     let orig = orig.to_rgb();
@@ -82,8 +90,8 @@ fn main() {
 
     let triangles = triangulate(&points).unwrap();
 
-    let mut img = image::RgbImage::new(c.width(), c.height());
-    let mut tri_buf = [imageproc::drawing::Point::new(0, 0); 3];
+    let mut img = RgbImage::new(c.width(), c.height());
+    let mut tri_buf = [Point::new(0, 0); 3];
     for tri in triangles {
         let a = points[tri.0];
         let b = points[tri.1];
@@ -94,38 +102,31 @@ fn main() {
             (a.y + b.y + c.y) as u32 / 3,
         );
         let color = orig.get_pixel(center.0, center.1).to_rgb();
-        tri_buf[0] = imageproc::drawing::Point::new(a.x as i32, a.y as i32);
-        tri_buf[1] = imageproc::drawing::Point::new(b.x as i32, b.y as i32);
-        tri_buf[2] = imageproc::drawing::Point::new(c.x as i32, c.y as i32);
+        tri_buf[0] = Point::new(a.x as i32, a.y as i32);
+        tri_buf[1] = Point::new(b.x as i32, b.y as i32);
+        tri_buf[2] = Point::new(c.x as i32, c.y as i32);
 
-        imageproc::drawing::draw_convex_polygon_mut(
+        draw_convex_polygon_mut(
             &mut img,
             &tri_buf,
             color
         );
 
         if !opts.no_antialiasing {
-            imageproc::drawing::draw_antialiased_line_segment_mut(
-                &mut img,
-                (a.x as i32, a.y as i32),
-                (b.x as i32, b.y as i32),
-                color,
-                imageproc::pixelops::interpolate,
-            );
-            imageproc::drawing::draw_antialiased_line_segment_mut(
-                &mut img,
-                (a.x as i32, a.y as i32),
-                (c.x as i32, c.y as i32),
-                color,
-                imageproc::pixelops::interpolate,
-            );
-            imageproc::drawing::draw_antialiased_line_segment_mut(
-                &mut img,
-                (c.x as i32, c.y as i32),
-                (b.x as i32, b.y as i32),
-                color,
-                imageproc::pixelops::interpolate,
-            );
+            let ps = [a, b, c];
+
+            for i in 0..3 {
+                let p1 = ps[i];
+                let p2 = ps[(i + 1) % 3];
+
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (p1.x as i32, p1.y as i32),
+                    (p2.x as i32, p2.y as i32),
+                    color,
+                    interpolate,
+                );
+            }
         }
     }
 
