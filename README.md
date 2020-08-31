@@ -25,7 +25,7 @@ kantig works by applying an edge detection algorithm to the image. It picks the 
 When in the command line you can run `kantig --help` to get the same listing.
 
 Option | Default | Description
------------- | -------------
+------------ | ------------- | -------------
 `-o`/`--output` | `-` | The output filename. kantig tries to auto-detect the output format from the filename (this can be overwritten with `--output-format`). If not present stdout will be used.
 `--output-format` | `png` | The format of the produced image. This has to be the name of the file extension of a format supported by the [image crate](https://docs.rs/image/0.23.9/image/). Examples are `png`, `jpg` and `bmp`.
 `--points-min-distance` | `4` | Enforce points used for triangulation to have a distance of X pixels to each other or more
@@ -39,6 +39,7 @@ Option | Default | Description
 There are three ways of specifying how many points kantig uses for the triangulation. Those are mutually exclusive. Note that the removal of close points happens after this, so you might end up with less points than you specified.
 
 Option | Description
+------------ | -------------
 `--points` | Use an absolute number of points
 `--points-relative` | Use a number of edge points relative to the number of edge points found. `0.0` means no points are used and `1.0` means all points are used
 `--points-pixel-relative` | Use a number of edge points relative to the number of pixels in the image
