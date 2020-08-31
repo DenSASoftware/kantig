@@ -148,13 +148,15 @@ pub enum PixelUnit {
 impl Options {
     /// Check the cli options and return an object describing how many points should be used for
     /// triangulation. Fail if more than one option is set.
+    ///
+    /// Use 4% of the edge points by default.
     pub fn edge_number(&self) -> LowPolyResult<PixelUnit> {
         match (
             self.points,
             self.points_relative,
             self.points_pixel_relative,
         ) {
-            (None, None, None) => Ok(PixelUnit::Absolute(10000)),
+            (None, None, None) => Ok(PixelUnit::Relative(0.04)),
             (Some(abs), None, None) => Ok(PixelUnit::Absolute(abs)),
             (None, Some(rel), None) => Ok(PixelUnit::Relative(rel)),
             (None, None, Some(rel)) => Ok(PixelUnit::PixelRelative(rel)),
