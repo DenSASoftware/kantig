@@ -18,10 +18,15 @@ use opts::{Options, PixelUnit};
 mod error;
 mod opts;
 
+/// Calculate the distance between the two points.
 fn distance(p1: &TriangulationPoint<f32>, p2: &TriangulationPoint<f32>) -> f32 {
     ((p1.x - p2.x).powi(2) + (p1.y - p2.y).powi(2)).sqrt()
 }
 
+/// Load the image specified in `opts` and guess the file format.
+///
+/// If a filename is given, the file is opened. Otherwise the contents of stdin are loaded into
+/// memory because the image decoder needs to be able to perform seek-operations on its input.
 fn load_image(opts: &Options) -> LowPolyResult<DynamicImage> {
     match &opts.input {
         Some(filename) => Ok(ImageReader::new(BufReader::new(File::open(filename)?))
@@ -38,6 +43,10 @@ fn load_image(opts: &Options) -> LowPolyResult<DynamicImage> {
     }
 }
 
+/// Calculate edge-points for the image based on the values of `opts`.
+///
+/// The four corners of the image will always be added to the result, meaning that the
+/// triangulation resulting of the returned points will always cover the whole image area.
 fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<TriangulationPoint<f32>>> {
     let edges = canny(&img.to_luma(), opts.canny_lower, opts.canny_upper);
 
@@ -75,6 +84,10 @@ fn edge_points(img: &DynamicImage, opts: &Options) -> LowPolyResult<Vec<Triangul
     Ok(points)
 }
 
+/// Remove points whose distance to each other is below a certain threshold.
+///
+/// For every point in the list, all subsequent points in the list whose distance to the point is
+/// less then `min_distance` are removed.
 fn remove_close_points(points: &mut Vec<TriangulationPoint<f32>>, min_distance: f32) {
     let mut i = 0;
     while i < points.len() {
@@ -91,6 +104,10 @@ fn remove_close_points(points: &mut Vec<TriangulationPoint<f32>>, min_distance: 
     }
 }
 
+/// Create the low-poly image.
+///
+/// Use the triangles of `triangulation` referring to the points in `points` and the colors of
+/// `original` to create a new rgb-image with the same size as the original.
 fn create_low_poly(
     original: &RgbImage,
     points: &[TriangulationPoint<f32>],
@@ -137,6 +154,20 @@ fn create_low_poly(
     Ok(img)
 }
 
+/// Run a shell command, pass it certain values and read the output.
+///
+/// The shell command can be anything that can be executed with your platforms shell. The process
+/// gets passed three lines to stdin, of which these are:
+/// - the three rgb color values of the color the program would use by default for the triangle
+/// - the coordinates of the three points of the triangles
+/// - the width and height of the image
+///
+/// The program is supposed to print out three space-separated rgb color values (integers between 0
+/// and 255 inclusively) on a single line. Everything else will be considered an error.
+///
+/// *THIS WILL CHANGE IN FUTURE VERSIONS.* Spawning hundreds or thousand of processes is slow and a
+/// future version will most likely spawn a single process that gets passed the same data in a
+/// different way.
 fn get_color_from_command(
     cmd: &str,
     default_color: image::Rgb<u8>,
@@ -193,6 +224,12 @@ fn get_color_from_command(
     }
 }
 
+/// Save the image to a file or stdout.
+///
+/// If `opts` contains a filename that file will be written to (otherwise stdout will be used).
+/// This way the image file format used will be guessed from the filename. This can be
+/// overwritten by specifying an output type in the CLI options. If nothing is set or can be
+/// determined the PNG format is used.
 fn save_image(img: RgbImage, opts: &Options) -> LowPolyResult<()> {
     let output_format = opts
         .output_format
@@ -211,6 +248,7 @@ fn save_image(img: RgbImage, opts: &Options) -> LowPolyResult<()> {
     Ok(())
 }
 
+/// Print the error message and exit in the case of an error
 fn simple_unwrap<T, E: Error>(res: Result<T, E>, action: &str) -> T {
     match res {
         Ok(val) => val,
@@ -221,6 +259,7 @@ fn simple_unwrap<T, E: Error>(res: Result<T, E>, action: &str) -> T {
     }
 }
 
+/// start cubism
 fn main() {
     let opts = Options::from_args();
 

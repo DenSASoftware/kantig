@@ -6,6 +6,9 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
 
+/// An error for parsing floats from the command line. Aside from the default parsing errors the
+/// passed value might not satisfy certain constraints, e.g. being between 0 and 1 or not being
+/// NaN.
 #[derive(Debug)]
 enum FloatParsingError {
     Native(ParseFloatError),
@@ -25,6 +28,8 @@ impl Display for FloatParsingError {
     }
 }
 
+/// Parse a float from `src` and return `Ok(f)` if the value is greater than or equal to 0,
+/// excluding NaN and +/- infinite. -0 is allowed.
 fn parse_positive_float(src: &str) -> Result<f32, FloatParsingError> {
     let num = match src.parse::<f32>() {
         Ok(num) => num,
@@ -38,6 +43,8 @@ fn parse_positive_float(src: &str) -> Result<f32, FloatParsingError> {
     }
 }
 
+/// Same as [parse_positive_float](fn.parse_positive_float.html), but also requires the value to be
+/// in the range [0.0, 1.0].
 fn parse_float_between_one_zero(src: &str) -> Result<f32, FloatParsingError> {
     let num = parse_positive_float(src)?;
     match num {
@@ -46,12 +53,16 @@ fn parse_float_between_one_zero(src: &str) -> Result<f32, FloatParsingError> {
     }
 }
 
+/// This error will be returned when the user passes an image extension name that cannot be mapped
+/// to an image type.
 #[derive(Debug, Error)]
 enum ImageFormatError {
     #[error("unsupported image format {0}")]
     Unsupported(String),
 }
 
+/// Search the different image formats supported by the image crate and return the one that lists
+/// `src` as one of its file extension names.
 fn parse_image_format(src: &str) -> Result<ImageFormat, ImageFormatError> {
     use ImageFormat::*;
     let formats = [
@@ -124,13 +135,19 @@ pub struct Options {
     pub input: Option<PathBuf>,
 }
 
+/// An enum specifying how many points should be used for triangulation
 pub enum PixelUnit {
+    /// Use an absolute number of points
     Absolute(usize),
+    /// Use a fraction of the number of edge points
     Relative(f32),
+    /// Use a fraction of the number of pixels in the image
     PixelRelative(f32),
 }
 
 impl Options {
+    /// Check the cli options and return an object describing how many points should be used for
+    /// triangulation. Fail if more than one option is set.
     pub fn edge_number(&self) -> LowPolyResult<PixelUnit> {
         match (
             self.points,
