@@ -77,7 +77,7 @@ fn parse_image_format(src: &str) -> Result<ImageFormat, ImageFormatError> {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "low-poly")]
+#[structopt(name = "kantig")]
 /// Create low-poly images
 ///
 /// Transform an image into a low-poly image. This program applies an edge-detection-algorithm,
