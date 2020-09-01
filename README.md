@@ -6,7 +6,10 @@ Create low-poly images in your command line. This program has a variety of optio
 
 ## Installation
 
-To build this program, [install rust](https://www.rust-lang.org/tools/install) first. Then, clone this project and run `cargo build --release`. The final binary will be in `target/release/kantig` and can be moved into your binary folder.
+You can either download a prebuilt binary for your platform on the releases page or build the binary yourself. To build this program, [install rust](https://www.rust-lang.org/tools/install) first. Then, clone this project and run `cargo build --release`. The final binary will be in `target/release/kantig` and can be moved into your binary folder. Alternatively you can install the binary directly with:
+```bash
+cargo install --git https://github.com/densasoftware/kantig
+```
 
 ## Invokation
 
