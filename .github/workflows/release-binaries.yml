@@ -51,7 +51,7 @@ jobs:
       TARGET_FLAGS:
       TARGET_DIR: ./target
       RUST_BACKTRACE: 1
-      BIN_NAME: bast
+      BIN_NAME: kantig
     strategy:
       matrix:
         build: [linux-musl, linux-gnu, macos, win-msvc, win-gnu, win32-msvc]
