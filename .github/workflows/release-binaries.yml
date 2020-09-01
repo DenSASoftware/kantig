@@ -118,7 +118,7 @@ jobs:
 
       - name: Setup Env Var
         run: |
-          # cargo install --git https://github.com/rust-embedded/cross
+          cargo install --git https://github.com/rust-embedded/cross
           echo "::set-env name=CARGO:: ${{ matrix.compiler }}"
           echo "::set-env name=TARGET_FLAGS::--target ${{ matrix.target }}"
           echo "::set-env name=TARGET_DIR::./target/${{ matrix.target }}"
